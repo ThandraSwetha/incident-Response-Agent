@@ -27,7 +27,7 @@ class IncidentCreate(BaseModel):
     title: str = Field(..., min_length=3)
     description: str = ""
     symptoms: str = Field(..., min_length=5)
-    error_logs: str = Field(..., min_length=5)
+    error_logs: str = ""
     deployment_version: str = ""
     timestamp: Optional[datetime] = None
     status: IncidentStatus = IncidentStatus.OPEN
@@ -36,8 +36,11 @@ class IncidentCreate(BaseModel):
     runbook: str = ""
     actions_taken: str = ""
     resolution: str = ""
+    runbook_used: str = ""
     resolution_time_minutes: int = 0
+    resolution_time: int = 0
     successful: bool = False
+    postmortem: str = ""
     lessons_learned: str = ""
     affected_components: str = ""
     environment: str = "production"
@@ -66,8 +69,11 @@ class IncidentOut(BaseModel):
     runbook: str = ""
     actions_taken: str = ""
     resolution: str = ""
+    runbook_used: str = ""
     resolution_time_minutes: int = 0
+    resolution_time: int = 0
     successful: bool = False
+    postmortem: str = ""
     lessons_learned: str = ""
     affected_components: str = ""
     environment: str = "production"

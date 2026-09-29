@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.agent import router as agent_router
 from app.api.incidents import router as incidents_router
 from app.api.investigation import router as investigation_router
 from app.api.memory import router as memory_router
@@ -31,3 +32,4 @@ app.include_router(investigation_router)
 app.include_router(memory_router)
 app.include_router(recommendations_router)
 app.include_router(postmortem_router)
+app.include_router(agent_router)

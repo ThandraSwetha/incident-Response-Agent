@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Activity, AlertOctagon, AlertTriangle, ArrowDown, ArrowUpRight, Bot, Check,
   CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3,
   Command, FileText, Filter, Gauge, LayoutDashboard, ListFilter, LoaderCircle,
-  Menu, MessageSquare, Plus, RefreshCw, Search, Send, Shield, ShieldAlert,
-  ShieldCheck, SlidersHorizontal, Sparkles, X, Zap,
+  Menu, MessageSquare, Plus, RefreshCw, RotateCcw, Search, Send, Shield,
+  ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, UserRound, X, Zap,
 } from 'lucide-react'
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -49,6 +49,15 @@ function App() {
   const [dialog, setDialog] = useState('')
   const [busy, setBusy] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
+  const [agentMessages, setAgentMessages] = useState([{
+    id: 'welcome',
+    role: 'assistant',
+    type: 'text',
+    text: "Hello! I'm Sentinel, your Incident Response Agent. Describe the issue and I’ll help investigate it using Operations Memory.",
+    createdAt: new Date().toISOString(),
+  }])
+  const [agentDraft, setAgentDraft] = useState('')
+  const [agentContext, setAgentContext] = useState({})
 
   function notify(message, type = 'success') {
     const id = `${Date.now()}-${Math.random()}`
@@ -163,6 +172,101 @@ function App() {
     }
   }
 
+  async function submitAgentMessage(rawMessage, requestContext = agentContext) {
+    const message = (rawMessage || '').trim()
+    if (!message || busy === 'agent') return
+    const activeContext = requestContext || {}
+    setAgentMessages((items) => [...items, {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      type: 'text',
+      text: message,
+      createdAt: new Date().toISOString(),
+    }])
+    setAgentDraft('')
+    setBusy('agent')
+
+    try {
+      const result = await request('/api/agent/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message, context: activeContext, incident_id: activeContext.incident_id }),
+      })
+      const responseMessages = []
+      if (result.message) responseMessages.push({ id: `assistant-${Date.now()}-text`, role: 'assistant', type: 'text', text: result.message })
+      if (result.detected_incident && result.kind !== 'investigation') responseMessages.push({ id: `assistant-${Date.now()}-incident`, role: 'assistant', type: 'incident', incident: result.detected_incident })
+      if (result.investigation) responseMessages.push({ id: `assistant-${Date.now()}-analysis`, role: 'assistant', type: 'analysis', investigation: result.investigation, incidentId: result.incident_id })
+      if (result.incidents) responseMessages.push({ id: `assistant-${Date.now()}-list`, role: 'assistant', type: 'incident_list', incidents: result.incidents })
+
+      if (result.kind === 'update_request' && result.incident_id) {
+        await request(`/api/incidents/${encodeURIComponent(result.incident_id)}/actions`, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'add_note', detail: result.detail || message }),
+        })
+        const updated = await request(`/api/incidents/${encodeURIComponent(result.incident_id)}`)
+        await loadIncidents()
+        responseMessages.push({ id: `assistant-${Date.now()}-updated`, role: 'assistant', type: 'updated', incident: updated })
+        setAgentContext({})
+        notify(`Incident ${updated.incident_id} updated`)
+      } else if (result.kind === 'create_request' && result.candidate) {
+        const incident = await request('/api/incidents', {
+          method: 'POST',
+          body: JSON.stringify({ ...result.candidate, status: 'INVESTIGATING' }),
+        })
+        await loadIncidents()
+        responseMessages.push({ id: `assistant-${Date.now()}-created`, role: 'assistant', type: 'success', incident })
+        setAgentContext({})
+        notify(`Incident ${incident.incident_id} created`)
+      } else {
+        setAgentContext(result.context || activeContext)
+        if (result.kind === 'investigation' && result.incident_id && result.detected_incident?.status !== 'RESOLVED') {
+          try {
+            await request(`/api/incidents/${encodeURIComponent(result.incident_id)}/actions`, {
+              method: 'POST',
+              body: JSON.stringify({ action: 'investigate', detail: 'Investigation requested through Sentinel Response Agent' }),
+            })
+            await loadIncidents()
+          } catch (err) {
+            notify(`Investigation completed, but the timeline could not be updated: ${err.message}`, 'error')
+          }
+        }
+      }
+      setAgentMessages((items) => [...items, ...responseMessages.map((item) => ({ ...item, createdAt: new Date().toISOString() }))])
+    } catch (err) {
+      setAgentMessages((items) => [...items, {
+        id: `assistant-${Date.now()}-error`,
+        role: 'assistant',
+        type: 'error',
+        text: `I couldn't complete that request. ${err.message}`,
+        retryMessage: message,
+        retryContext: activeContext,
+        createdAt: new Date().toISOString(),
+      }])
+      notify(`Could not process the agent request: ${err.message}`, 'error')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  function askSentinel(incident) {
+    const context = { incident_id: incident.incident_id }
+    setPage('Agent')
+    setSelected(null)
+    setAgentContext(context)
+    submitAgentMessage(`Investigate ${incident.incident_id}`, context)
+  }
+
+  function startNewConversation() {
+    setAgentContext({})
+    setAgentDraft('')
+    setAgentMessages([{
+      id: `welcome-${Date.now()}`,
+      role: 'assistant',
+      type: 'text',
+      text: "Hello! I'm Sentinel, your Incident Response Agent. Describe the issue and I’ll help investigate it using Operations Memory.",
+      createdAt: new Date().toISOString(),
+    }])
+  }
+
   async function generateRecommendation(incidentId) {
     setBusy('recommend')
     try {
@@ -263,13 +367,14 @@ function App() {
 
           {page === 'Incidents' && <section className="panel incident-list-panel"><div className="list-toolbar"><div className="list-title"><h2>All incidents <span>{incidents.length}</span></h2><p>Search and filter the incident register</p></div><button className="new-incident-button compact" onClick={() => setDialog('create')}><Plus size={15} />Create incident</button></div><div className="filter-row"><label className="search-field"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search ID, service, or description" /><kbd>⌘ K</kbd></label><div className="select-wrap"><Filter size={15} /><select aria-label="Filter by severity" value={severity} onChange={(event) => setSeverity(event.target.value)}><option>All severities</option>{SEVERITIES.map((item) => <option key={item} value={item}>{severityName(item)}</option>)}</select><ChevronDown size={13} /></div><div className="select-wrap"><ListFilter size={15} /><select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}><option>All statuses</option>{STATUSES.map((item) => <option key={item} value={item}>{statusName(item)}</option>)}</select><ChevronDown size={13} /></div><div className="select-wrap sort-select"><SlidersHorizontal size={15} /><select aria-label="Sort incidents" value={sort} onChange={(event) => setSort(event.target.value)}><option>Newest first</option><option>Oldest first</option></select><ChevronDown size={13} /></div></div><IncidentTable incidents={filtered} loading={loading} onOpen={openIncident} emptyText={incidents.length ? 'No incidents match these filters.' : 'No incidents have been reported yet.'} /><div className="list-footnote">Showing <b>{filtered.length}</b> of <b>{incidents.length}</b> incidents <span>Refresh interval · 15s</span></div></section>}
 
-          {page === 'Agent' && <AgentPage incidents={incidents} onCreate={() => setDialog('create')} onOpen={openIncident} onAnalyze={runInvestigation} busy={busy} />}
+          {page === 'Agent' && <ChatAgentPage incidents={incidents} health={health} busy={busy} messages={agentMessages} draft={agentDraft} setDraft={setAgentDraft} onSend={submitAgentMessage} onNewConversation={startNewConversation} onOpen={openIncident} onInvestigateIncident={(incident) => submitAgentMessage(`Investigate ${incident.incident_id}`, { incident_id: incident.incident_id })} />}
 
           {page === 'Memory' && <MemoryPage incidents={incidents} onOpen={openIncident} />}
         </div>
       </main>
 
-      {selected && <IncidentDrawer incident={selected} events={events} investigation={investigation} recommendation={recommendation} busy={busy} onClose={() => setSelected(null)} onAction={performAction} onInvestigate={runInvestigation} onRecommend={generateRecommendation} onPostmortem={generatePostmortem} onAssign={() => setDialog('assign')} onNote={() => setDialog('note')} notify={notify} />}
+      {selected && <IncidentDrawer incident={selected} events={events} investigation={investigation} recommendation={recommendation} busy={busy} onClose={() => setSelected(null)} onAction={performAction} onInvestigate={runInvestigation} onAskSentinel={askSentinel} onRecommend={generateRecommendation} onPostmortem={generatePostmortem} onAssign={() => setDialog('assign')} onNote={() => setDialog('note')} notify={notify} />}
+      {selected && <button className="drawer-ask-sentinel" onClick={() => askSentinel(selected)}><MessageSquare size={15} />Ask Sentinel</button>}
       {dialog === 'create' && <CreateDialog busy={busy === 'create'} onClose={() => setDialog('')} onSubmit={createIncident} />}
       {dialog === 'assign' && selected && <ActionDialog type="assign" busy={busy === 'assign'} onClose={() => setDialog('')} onSubmit={async (value) => { const done = await performAction(selected.incident_id, 'assign', '', true, value); if (done) setDialog('') }} />}
       {dialog === 'note' && selected && <ActionDialog type="add_note" busy={busy === 'add_note'} onClose={() => setDialog('')} onSubmit={async (value) => { const done = await performAction(selected.incident_id, 'add_note', value); if (done) setDialog('') }} />}
@@ -301,6 +406,76 @@ function StatusBadge({ value = '' }) {
 function AgentPage({ incidents, onCreate, onOpen, onAnalyze, busy }) {
   const active = incidents.filter((item) => item.status !== 'RESOLVED').slice(0, 4)
   return <div className="agent-page-grid"><section className="panel agent-intro"><div className="agent-orbit"><div className="orbit-ring ring-one" /><div className="orbit-ring ring-two" /><span><Bot size={31} /></span><i className="orbit-node node-one" /><i className="orbit-node node-two" /><i className="orbit-node node-three" /></div><div className="eyebrow"><span className="eyebrow-line" />INCIDENT RESPONSE AGENT</div><h2>Context-aware incident analysis</h2><p>Investigate an incident with the configured analysis service and surface relevant historical cases from the operations memory.</p><div className="agent-capabilities"><span><Sparkles size={14} />LLM-assisted analysis</span><span><Command size={14} />Historical incident recall</span><span><ShieldCheck size={14} />Evidence-led recommendations</span></div><button className="new-incident-button" onClick={onCreate}><Plus size={15} />Submit an incident</button></section><section className="panel agent-worklist"><div className="panel-heading"><div><h2>Choose an incident</h2><p>Analysis uses current incident and event context</p></div><span className="worklist-count">{active.length} active</span></div>{active.length ? <div className="agent-incident-list">{active.map((incident) => <div className="agent-incident" key={incident.incident_id}><button className="agent-incident-main" onClick={() => onOpen(incident)}><SeverityBadge value={incident.severity} /><b>{incident.title}</b><span>{incident.incident_id} · {incident.service}</span></button><button className="analyze-button" disabled={!!busy} onClick={() => onAnalyze(incident.incident_id)}>{busy === 'investigate' ? <LoaderCircle className="spinning" size={14} /> : <Zap size={14} />}Analyze</button></div>)}</div> : <div className="empty-state compact-empty"><span className="empty-icon"><ShieldCheck size={23} /></span><b>No active incidents to analyze</b><span>Submit an incident to start an investigation.</span></div>}<div className="agent-foot"><span className="health-dot" />Results are generated by the configured backend agent.</div></section><section className="agent-note"><div className="note-icon"><Gauge size={18} /></div><div><b>Analysis availability</b><p>The backend may use an external LLM when configured, or its built-in rule-based fallback. Results include confidence and historical matches when available.</p></div></section></div>
+}
+
+function ChatAgentPage({ incidents, health, busy, messages, draft, setDraft, onSend, onNewConversation, onOpen, onInvestigateIncident }) {
+  const active = incidents.filter((item) => item.status !== 'RESOLVED').slice(0, 4)
+  const chatRef = useRef(null)
+  const quickActions = [
+    { label: 'Report an Incident', prompt: 'Report an incident' },
+    { label: 'Investigate an Existing Incident', prompt: 'Investigate an existing incident' },
+    { label: 'Find Similar Incidents', prompt: 'Find similar incidents' },
+    { label: 'Check Active Incidents', prompt: 'Check active incidents' },
+  ]
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
+  }, [messages, busy])
+
+  function submit(event) {
+    event.preventDefault()
+    if (draft.trim()) onSend(draft)
+  }
+
+  return <section className="panel agent-chat-panel">
+    <header className="agent-chat-header">
+      <div className="agent-chat-title-wrap"><div className="agent-chat-avatar"><Bot size={19} /></div><div>
+        <div className="agent-title-row"><h2>Sentinel Response Agent</h2><span className={`agent-status-dot ${health}`}><i />{health === 'online' ? 'Online' : health === 'checking' ? 'Connecting' : 'Offline'}</span></div>
+        <p>AI-powered incident investigation and response</p>
+      </div></div>
+      <button className="icon-button agent-new-chat" title="Start a new conversation" aria-label="Start a new conversation" onClick={onNewConversation}><RotateCcw size={15} /></button>
+    </header>
+
+    <div className="agent-quick-actions">{quickActions.map((action) => <button key={action.label} type="button" className="quick-action" disabled={!!busy} onClick={() => onSend(action.prompt)}>{action.label}</button>)}</div>
+
+    <div className="agent-chat-body" ref={chatRef} aria-live="polite">
+      {messages.map((message) => <article key={message.id} className={`chat-message ${message.role}`}>
+        <div className="chat-avatar">{message.role === 'assistant' ? <Bot size={15} /> : <UserRound size={14} />}</div>
+        <div className="chat-message-content"><div className="chat-message-meta"><b>{message.role === 'assistant' ? 'Sentinel' : 'You'}</b><time>{message.createdAt ? formatTime(message.createdAt) : 'Now'}</time></div>
+          <div className={`chat-bubble ${message.type || 'text'}`}>
+            {message.type === 'incident' && message.incident ? <>
+              <div className="chat-card-heading"><ShieldAlert size={15} />Detected incident</div>
+              <div className="agent-detail-grid"><DetailItem label="SERVICE" value={message.incident.service || 'Not identified'} /><DetailItem label="ENVIRONMENT" value={message.incident.environment || 'Not identified'} /><DetailItem label="EVIDENCE" value={message.incident.error_logs || message.incident.evidence || 'Not provided'} /><DetailItem label="SUGGESTED SEVERITY" value={`${severityName(message.incident.severity)}${message.incident.severity_reason ? ` · ${message.incident.severity_reason}` : ''}`} /></div>
+              <div className="chat-card-actions"><button className="action-primary" disabled={!!busy} onClick={() => onSend('Yes, investigate')}>Investigate</button></div>
+            </> : message.type === 'analysis' && message.investigation ? <>
+              <div className="chat-card-heading"><Activity size={15} />Investigation summary</div><p className="chat-analysis-summary">{message.investigation.summary}</p>
+              <div className="investigation-sections">
+                <div><span>Possible root cause</span><b>{(message.investigation.possible_root_causes || []).join('; ') || 'No root cause identified from available evidence.'}</b></div>
+                <div><span>Evidence</span><b>{(message.investigation.evidence || []).map((item) => item.detail).filter(Boolean).join(' ') || 'Reviewed the report and stored incident records.'}</b></div>
+                <div><span>Similar incidents</span><b>{message.investigation.similar_incidents?.length ? message.investigation.similar_incidents.map((item) => item.incident_id).join(', ') : 'No similar incident was found in Operations Memory.'}</b></div>
+                <div><span>Previous resolution</span><b>{message.investigation.previous_resolution || 'No previous resolution is recorded.'}</b></div>
+                <div><span>Recommended runbook</span><b>{message.investigation.recommended_runbook || 'No runbook is recorded for these matches.'}</b></div>
+                {message.investigation.confidence != null && <div><span>Confidence</span><b>{Math.round(message.investigation.confidence * 100)}% · estimate, not confirmation</b></div>}
+              </div>
+                {message.incidentId ? <p className="chat-confirmed-context">Investigation is for {message.incidentId}; no new incident was created.</p> : message.investigation.active_incident ? <div className="chat-card-actions"><button className="action-primary" disabled={!!busy} onClick={() => onSend('Update existing incident')}>Update {message.investigation.active_incident.incident_id}</button><button className="action-secondary" disabled={!!busy} onClick={() => onSend('Create separate incident')}>Create separate incident</button><span>Sentinel found an active record for this service.</span></div> : <div className="chat-card-actions"><button className="action-primary" disabled={!!busy} onClick={() => onSend('Create incident')}>Create Incident</button><span>Creates a record only after your confirmation.</span></div>}
+            </> : (message.type === 'success' || message.type === 'updated') && message.incident ? <>
+              <div className="success-pill"><Check size={13} />{message.type === 'updated' ? 'Existing incident updated' : 'Incident created'}</div>
+              <div className="created-meta"><strong>Incident ID:</strong> {message.incident.incident_id}</div><div className="created-meta"><strong>Service:</strong> {message.incident.service}</div><div className="created-meta"><strong>Severity:</strong> {severityName(message.incident.severity)}</div><div className="created-meta"><strong>Environment:</strong> {message.incident.environment}</div><div className="created-meta"><strong>Status:</strong> {statusName(message.incident.status)}</div>
+              {message.type === 'updated' && <div className="created-meta">Your report was added to the existing response timeline.</div>}
+              <button className="text-icon-button" onClick={() => onOpen(message.incident)}>View Incident <ArrowUpRight size={14} /></button>
+            </> : message.type === 'incident_list' ? <>
+              <p>{message.text}</p>{message.incidents.length ? message.incidents.map((incident) => <button className="agent-list-item" key={incident.incident_id} disabled={!!busy} onClick={() => onInvestigateIncident(incident)}><SeverityBadge value={incident.severity} /><span><b>{incident.title}</b><small>{incident.incident_id} · {incident.service} · {statusName(incident.status)}</small></span><ChevronRight size={15} /></button>) : <p>No active incidents are currently recorded.</p>}
+            </> : <><p>{message.text}</p>{message.type === 'error' && <button className="retry-button" disabled={!!busy} onClick={() => onSend(message.retryMessage, message.retryContext)}><RotateCcw size={13} />Retry</button>}</>}
+          </div>
+        </div>
+      </article>)}
+      {busy === 'agent' && <article className="chat-message assistant"><div className="chat-avatar"><Bot size={15} /></div><div className="chat-message-content"><div className="chat-message-meta"><b>Sentinel</b><time>Now</time></div><div className="chat-bubble typing-bubble"><LoaderCircle size={14} className="spinning" />Checking incident records and Operations Memory…</div></div></article>}
+    </div>
+
+    <form className="agent-chat-input" onSubmit={submit}><textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submit(event) } }} placeholder="Describe your incident…" rows={2} disabled={!!busy} aria-label="Message Sentinel" /><button type="submit" className="send-button" disabled={!draft.trim() || !!busy}><Send size={15} />Send</button><span className="agent-input-hint">Enter to send · Shift+Enter for a new line</span></form>
+
+    <aside className="agent-context-panel"><div className="agent-context-header">Active incidents <span>{active.length}</span></div>{active.length ? active.map((incident) => <button className="context-item" key={incident.incident_id} onClick={() => onInvestigateIncident(incident)} disabled={!!busy}><span className="context-id">{incident.incident_id}</span><span className="context-title">{incident.title}</span><ChevronRight size={14} /></button>) : <div className="compact-empty">No active incidents</div>}</aside>
+  </section>
 }
 
 function MemoryPage({ incidents, onOpen }) {

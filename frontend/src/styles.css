@@ -137,3 +137,129 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   .sidebar { width: min(285px, calc(100vw - 48px)); transform: translateX(-105%); transition: transform .22s ease; }.sidebar.sidebar-open { transform: translateX(0); }.mobile-scrim { position: fixed; inset: 0; z-index: 4; display: block; border: 0; background: #101b1570; }.mobile-menu, .mobile-close { display: inline-grid; }.mobile-menu { margin-left: -8px; }.mobile-close { margin-left: auto; color: #9eaaa2; }.brand-lockup { width: 100%; }.main-area { margin-left: 0; }.topbar { height: 57px; padding: 0 13px; }.breadcrumbs { gap: 6px; font-size: 9px; }.topbar-actions { gap: 6px; }.live-indicator { display: none; }.refresh-button { width: 31px; height: 31px; }.new-incident-button { min-height: 32px; padding: 0 9px; font-size: 9px; }.new-incident-button svg { width: 14px; }.content-wrap { padding: 22px 13px 18px; }.page-heading { align-items: flex-start; margin-bottom: 18px; }.page-heading h1 { font-size: 21px; }.page-heading p { max-width: 250px; line-height: 1.5; }.heading-date { display: none; }.metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.metric-card { min-height: 101px; padding: 12px 10px; }.metric-top { font-size: 8px; }.metric-icon { width: 24px; height: 24px; }.metric-icon svg { width: 15px; }.metric-value { font-size: 22px; }.metric-note { font-size: 7px; }.overview-grid { gap: 9px; margin-top: 9px; }.trend-panel, .distribution-panel { padding: 14px 12px 10px; }.chart-wrap { height: 165px; }.severity-list { grid-template-columns: 1fr 1fr; gap: 12px 9px; padding: 16px 0; }.severity-row { grid-template-columns: 7px 45px minmax(20px, 1fr) 14px; gap: 5px; }.severity-name { font-size: 8px; }.status-summary > div { grid-template-columns: 1fr 1fr; }.queue-panel { margin-top: 9px; }.queue-heading { padding: 14px 12px 11px; }.incident-table { min-width: 700px; }.dashboard-footer { flex-wrap: wrap; }.footer-status { margin-left: auto; }.footer-time { width: 100%; padding-left: 2px; }.list-toolbar { padding: 14px 12px; }.filter-row { flex-wrap: wrap; padding: 0 12px 12px; }.search-field { flex-basis: 100%; }.search-field kbd { display: none; }.select-wrap { flex: 1; justify-content: center; }.select-wrap select { max-width: 100px; }.sort-select { display: none; }.list-footnote { padding: 9px 12px; }.memory-panel { padding: 15px 12px; }.memory-header { align-items: flex-start; }.memory-emblem { flex: 0 0 40px; width: 40px; height: 40px; }.memory-header h2 { font-size: 15px; }.memory-header p { line-height: 1.55; }.memory-search { margin-top: 16px; }.memory-search span { display: none; }.memory-results { grid-template-columns: 1fr; }.agent-intro { padding: 16px; }.agent-intro h2 { font-size: 18px; }.agent-worklist { padding: 14px; }.agent-incident { gap: 5px; }.analyze-button { padding: 7px; }.drawer-body { padding: 16px 14px 20px; }.drawer-topbar { padding: 0 14px; }.drawer-title-block h2 { font-size: 16px; }.detail-grid { gap: 11px; }.drawer-actions { padding: 9px 10px 12px; }.action-row { gap: 5px; }.action-secondary, .action-primary { padding: 0 7px; font-size: 8px; }.action-row:first-child > .action-secondary { flex: 1; }.action-row:first-child .action-icon { flex: 0 0 31px; width: 31px; }.resolve-action { margin-left: 0; }.primary-actions > button { flex: 1; }.modal-backdrop { padding: 10px; }.modal { max-height: 94vh; }.modal-heading { padding: 14px; }.incident-form { padding: 13px 14px 15px; }.form-grid { gap: 10px; }.field-label { font-size: 8px; }.field-label input, .field-label select, .field-label textarea { font-size: 9px; }.toast-stack { top: 63px; right: 10px; }.connection-banner { align-items: flex-start; font-size: 9px; }.connection-banner button { white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+.agent-chat-panel { display: grid; grid-template-rows: auto auto minmax(260px, 1fr) auto auto; min-height: min(730px, calc(100vh - 190px)); overflow: hidden; }
+.agent-chat-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 20px 14px; border-bottom: 1px solid var(--line); }
+.agent-chat-title-wrap { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.agent-chat-avatar { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; border: 1px solid #d9e9df; border-radius: 8px; background: #edf7f0; color: var(--green); }
+.agent-title-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.agent-title-row h2 { margin: 0; color: #24352b; font-size: 14px; }
+.agent-chat-header p { margin: 4px 0 0; color: #7d8b82; font-size: 10px; }
+.agent-status-dot { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 999px; background: #edf8f0; color: #337b55; font: 8px var(--mono); }
+.agent-status-dot i { width: 6px; height: 6px; border-radius: 50%; background: #43ba7c; }
+.agent-status-dot.offline { background: #fff1ed; color: #a75040; }.agent-status-dot.offline i { background: #d96957; }.agent-status-dot.checking { background: #fff8e9; color: #92702e; }.agent-status-dot.checking i { background: #d5a849; }
+.agent-new-chat { border-color: #e6ece8; }
+.agent-quick-actions { display: flex; flex-wrap: wrap; gap: 7px; padding: 11px 18px; border-bottom: 1px solid #edf1ee; }
+.quick-action { min-height: 29px; padding: 0 9px; border: 1px solid #e0e9e3; border-radius: 4px; background: #fff; color: #4f6658; font-size: 9px; font-weight: 600; }
+.quick-action:hover { border-color: #a9cfb7; background: #f4faf6; color: #286747; }
+.agent-chat-body { min-height: 270px; max-height: min(56vh, 540px); overflow: auto; padding: 18px 20px; scroll-behavior: smooth; }
+.chat-message { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 17px; animation: rise-in .2s ease-out; }
+.chat-message:last-child { margin-bottom: 0; }.chat-message.user { flex-direction: row-reverse; }
+.chat-avatar { display: grid; flex: 0 0 27px; width: 27px; height: 27px; place-items: center; border: 1px solid #deebe2; border-radius: 50%; background: #eef7f1; color: #3a8c60; }
+.chat-message.user .chat-avatar { border-color: #e2e8ef; background: #f0f3f7; color: #5a6d7d; }
+.chat-message-content { min-width: 0; max-width: min(760px, 86%); }
+.chat-message.user .chat-message-content { display: flex; flex-direction: column; align-items: flex-end; }
+.chat-message-meta { display: flex; align-items: center; gap: 8px; margin: 0 2px 5px; color: #7c8a81; font-size: 8px; }.chat-message-meta b { color: #53645a; font-size: 9px; }.chat-message-meta time { color: #a0aaa4; font-family: var(--mono); }
+.chat-bubble { padding: 10px 12px; border: 1px solid #e6ece8; border-radius: 4px 10px 10px 10px; background: #f8faf8; color: #4d5d53; font-size: 10px; line-height: 1.65; overflow-wrap: anywhere; }
+.chat-message.user .chat-bubble { border-color: #d6e9de; border-radius: 10px 4px 10px 10px; background: #edf7f1; color: #344d3d; }
+.chat-bubble p { margin: 0; }.chat-bubble.error { border-color: #f0d8d1; background: #fff8f5; color: #8f4d40; }
+.chat-card-heading { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; color: #31463a; font-size: 10px; font-weight: 700; }.chat-card-heading svg { color: #3b9062; }
+.agent-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 14px; padding: 10px 0; border-top: 1px solid #e8eeea; border-bottom: 1px solid #e8eeea; }.agent-detail-grid .detail-item b { white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
+.chat-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 11px; }.chat-card-actions > span { color: #89968e; font-size: 8px; }
+.chat-analysis-summary { margin: 0 0 10px !important; color: #45574c; }
+.investigation-sections { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid #e7ede9; }.investigation-sections > div { display: grid; grid-template-columns: minmax(105px, .36fr) minmax(0, 1fr); gap: 10px; }.investigation-sections span { color: #89968e; font-size: 8px; }.investigation-sections b { color: #506056; font-size: 9px; font-weight: 600; overflow-wrap: anywhere; }
+.chat-confirmed-context { margin-top: 10px !important; color: #62766a; font-size: 8px; }
+.success-pill { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 7px; color: #31784f; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.created-meta { margin: 4px 0; color: #617067; font-size: 9px; }.created-meta strong { color: #43544a; }
+.agent-list-item { display: flex; width: 100%; align-items: center; gap: 9px; margin-top: 7px; padding: 9px; border: 1px solid #e4ebe6; border-radius: 4px; background: white; text-align: left; }.agent-list-item > span:nth-child(2) { display: grid; flex: 1; gap: 3px; min-width: 0; }.agent-list-item b { overflow: hidden; color: #37483d; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }.agent-list-item small { color: #87938b; font: 8px var(--mono); }.agent-list-item > svg { color: #819087; }
+.retry-button { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; padding: 5px 7px; border: 1px solid #e3d4ce; border-radius: 4px; background: white; color: #8e4d3e; font-size: 8px; }
+.typing-bubble { display: flex; align-items: center; gap: 7px; color: #718178; }.typing-bubble svg { color: #3b9467; }
+.agent-chat-input { position: relative; display: flex; align-items: flex-end; gap: 9px; padding: 12px 18px 25px; border-top: 1px solid var(--line); }
+.agent-chat-input textarea { flex: 1; min-height: 43px; max-height: 125px; resize: vertical; padding: 10px 11px; border: 1px solid #dfe8e2; border-radius: 5px; outline: none; color: #38483e; font-size: 10px; line-height: 1.5; }.agent-chat-input textarea:focus { border-color: #80b895; box-shadow: 0 0 0 2px #23896018; }.agent-chat-input textarea::placeholder { color: #98a49c; }
+.send-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 73px; height: 38px; border: 1px solid #18784f; border-radius: 4px; background: #21875e; color: #fff; font-size: 9px; font-weight: 700; }.send-button:hover:not(:disabled) { background: #176e4a; }.agent-input-hint { position: absolute; bottom: 9px; left: 20px; color: #a0aaa3; font-size: 7px; }
+.agent-context-panel { padding: 0 18px 12px; }.agent-context-header { display: flex; align-items: center; gap: 7px; padding: 9px 0; color: #6e7c73; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }.agent-context-header span { color: #87948b; font: 8px var(--mono); }.context-item { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 30px; padding: 5px 7px; border: 0; border-top: 1px solid #eff2f0; background: transparent; text-align: left; }.context-item:hover { background: #f6faf7; }.context-id { flex: 0 0 auto; color: #78877e; font: 8px var(--mono); }.context-title { flex: 1; overflow: hidden; color: #53645a; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }.context-item > svg { color: #97a49b; }.compact-empty { padding: 9px 0; color: #8b9790; font-size: 9px; }
+.drawer-ask-sentinel { position: fixed; z-index: 25; right: 22px; bottom: 18px; display: inline-flex; align-items: center; gap: 7px; min-height: 35px; padding: 0 12px; border: 1px solid #18784f; border-radius: 4px; background: #21875e; color: white; box-shadow: 0 4px 14px #14251a25; font-size: 9px; font-weight: 700; }.drawer-ask-sentinel:hover { background: #176e4a; }
+@media (max-width: 640px) { .agent-chat-panel { min-height: calc(100vh - 135px); }.agent-chat-header { padding: 13px; }.agent-chat-body { padding: 14px 12px; max-height: 48vh; }.agent-quick-actions { padding: 9px 12px; }.quick-action { font-size: 8px; }.agent-chat-input { padding: 10px 12px 24px; }.agent-context-panel { padding: 0 12px 10px; }.chat-message-content { max-width: 88%; }.agent-detail-grid { grid-template-columns: 1fr; }.investigation-sections > div { grid-template-columns: 1fr; gap: 2px; }.drawer-ask-sentinel { right: 12px; bottom: 12px; } }
+
+/* Readability pass: preserve the existing typefaces and raise compact UI text. */
+.brand-sub, .health-label, .heading-date > span, .metric-note, .chart-footer,
+.status-summary > span, .incident-table th, .severity-badge, .status-badge,
+.incident-id, .time-cell, .list-footnote, .worklist-count, .memory-service,
+.memory-open, .detected-label, .drawer-topbar > span, .field-error,
+.agent-status-dot, .chat-card-actions > span, .investigation-sections span,
+.chat-confirmed-context, .agent-list-item small, .retry-button,
+.agent-context-header, .context-id, .compact-empty, .agent-input-hint {
+  font-size: 10px;
+}
+
+.system-health small, .workspace-switch small, .profile small, .eyebrow,
+.health-label, .metric-top, .panel-heading p, .list-title p, .chart-legend,
+.chart-tooltip, .text-icon-button, .severity-name, .status-summary-row,
+.incident-table td, .incident-title, .service-cell, .list-title h2 span,
+.search-field input, .memory-search input, .select-wrap select,
+.agent-capabilities span, .agent-incident-main > span, .agent-foot,
+.memory-header p, .memory-record p, .memory-record > b, .drawer-section,
+.detail-copy, .timeline-content p, .field-label, .field-label input,
+.field-label select, .field-label textarea, .toast, .agent-chat-header p,
+.quick-action, .chat-bubble, .chat-message-meta, .created-meta,
+.agent-list-item b, .context-title {
+  font-size: 12px;
+}
+
+.workspace-switch b, .profile b, .nav-item, .live-indicator, .connection-banner,
+.text-icon-button, .incident-title, .search-field kbd, .new-incident-button,
+.agent-chat-header p, .chat-message-meta b,
+.chat-card-heading, .investigation-sections b, .success-pill, .send-button,
+.drawer-ask-sentinel {
+  font-size: 13px;
+}
+
+.panel-heading h2, .list-title h2 {
+  font-size: 15px;
+}
+
+.modal-heading p { font-size: 12px; }
+.modal-heading h2 { font-size: 16px; }
+.agent-title-row h2 { font-size: 16px; }
+.memory-header h2 { font-size: 18px; }
+.agent-intro h2 { font-size: 20px; }
+.agent-context-header { font-size: 10px; }
+.agent-status-dot { font-size: 10px; }
+.metric-note { font-size: 11px; }
+.quick-action { font-size: 11px; }
+.chat-card-heading { font-size: 12px; }
+.send-button { font-size: 12px; }
+.drawer-ask-sentinel { font-size: 12px; }
+.new-incident-button { font-size: 12px; }
+.chat-message-meta b { font-size: 11px; }
+.investigation-sections b { font-size: 11px; }
+.success-pill { font-size: 11px; }
+.text-icon-button { font-size: 11px; }
+.incident-title { font-size: 12px; }
+.search-field kbd { font-size: 10px; }
+.workspace-switch b, .profile b { font-size: 12px; }
+.nav-item { font-size: 12px; }
+.live-indicator { font-size: 11px; }
+.connection-banner { font-size: 12px; }
+.panel-heading h2, .list-title h2 {
+  line-height: 1.35;
+}
+
+.system-health b, .metric-top, .metric-note, .panel-heading p, .list-title p,
+.chart-legend, .chart-footer, .status-summary-row, .incident-table th,
+.incident-table td, .severity-name, .text-icon-button, .field-label,
+.field-label input, .field-label select, .field-label textarea,
+.agent-chat-header p, .quick-action, .chat-message-meta, .chat-card-actions > span,
+.investigation-sections span, .created-meta, .agent-input-hint,
+.agent-context-header, .agent-list-item b, .agent-list-item small,
+.context-title, .drawer-ask-sentinel {
+  line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .quick-action { font-size: 10px; }
+  .metric-note, .severity-name, .status-summary-row, .incident-table td,
+  .search-field input, .select-wrap select, .chat-bubble, .context-title {
+    font-size: 11px;
+  }
+}

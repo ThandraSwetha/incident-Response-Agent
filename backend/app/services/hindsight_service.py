@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from typing import Any
 
@@ -25,7 +26,10 @@ class HindsightService:
         self.settings = get_settings()
 
     def is_available(self) -> bool:
-        return bool(self.settings.hindsight_url or self.settings.hindsight_api_key)
+        return True
+
+    def recall_memories(self, query: str, limit: int = 5):
+        return self.recall_relevant_incidents(query, limit=limit)
 
     def _ensure_db(self):
         Base.metadata.create_all(bind=engine)
@@ -69,8 +73,24 @@ class HindsightService:
         self._ensure_db()
         incidents = self.db.query(IncidentRecord).all()
         ordered = []
-        query_lower = (query or "").lower()
+        stop_words = {
+            "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "get", "getting",
+            "has", "have", "http", "in", "is", "it", "of", "on", "or", "our", "the", "to", "was",
+            "were", "with", "error", "errors", "failure", "failures", "reported", "incident", "service",
+            "production", "staging", "development", "after", "during", "user", "users",
+        }
+
+        def tokens(value: str) -> set[str]:
+            result = set()
+            for token in re.findall(r"[a-z0-9]+", (value or "").lower()):
+                if len(token) < 3 or token in stop_words:
+                    continue
+                result.add(token[:-1] if token.endswith("s") and len(token) > 4 else token)
+            return result
+
+        query_tokens = tokens(query)
         for incident in incidents:
+            service_tokens = tokens(incident.service or "")
             text = " ".join(
                 [
                     incident.title or "",
@@ -82,16 +102,11 @@ class HindsightService:
                     incident.runbook_used or "",
                     incident.lessons_learned or "",
                 ]
-            ).lower()
-            score = 0
-            if incident.service.lower() in query_lower:
-                score += 3
-            if incident.runbook_used and incident.runbook_used.lower() in query_lower:
-                score += 2
-            for term in query_lower.split():
-                if term and term in text:
-                    score += 1
-            if score > 0 or not query_lower:
+            )
+            overlap = query_tokens.intersection(tokens(text))
+            service_overlap = query_tokens.intersection(service_tokens)
+            if not query_tokens or service_overlap or len(overlap) >= 2:
+                score = len(overlap) + (4 * len(service_overlap))
                 ordered.append({
                     "incident_id": incident.incident_id,
                     "service": incident.service,
@@ -102,11 +117,15 @@ class HindsightService:
                     "resolution": incident.resolution,
                     "resolution_time": incident.resolution_time,
                     "lessons_learned": incident.lessons_learned,
+                    "successful": incident.successful,
                     "status": incident.status,
-                    "confidence": min(0.98, round(score / max(1, len(query_lower.split()) + 1), 2)),
+                    "confidence": min(0.98, round(score / max(1, len(query_tokens) + 4), 2)),
+                    "_score": score,
                     "date": incident.created_at,
                 })
-        ordered.sort(key=lambda x: x["confidence"], reverse=True)
+        ordered.sort(key=lambda item: (item["_score"], item["successful"], item["confidence"]), reverse=True)
+        for item in ordered:
+            item.pop("_score", None)
         return ordered[:limit]
 
     def list_incidents(self):

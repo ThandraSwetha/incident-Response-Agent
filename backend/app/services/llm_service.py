@@ -15,16 +15,32 @@ class LLMService:
     def _fallback_response(self, incident_data: dict[str, Any]) -> dict[str, Any]:
         service = incident_data.get("service", "service")
         symptoms = incident_data.get("symptoms", "")
+        evidence = incident_data.get("error_logs", "")
+        combined = f"{symptoms} {evidence}".lower()
+        possible_root_causes = []
+        if any(token in combined for token in ("deploy", "deployment", "release", "rollback")):
+            possible_root_causes.append("A deployment-related regression is possible; verify the change window and rollout health.")
+        if any(token in combined for token in ("database", "db", "connection pool", "postgres", "mysql")):
+            possible_root_causes.append("Database dependency or connection-pool pressure is possible; confirm with pool and database metrics.")
+        if any(token in combined for token in ("503", "5xx", "unavailable", "overload")):
+            possible_root_causes.append("An unavailable or overloaded service dependency is possible; confirm with upstream health and saturation metrics.")
+        if not possible_root_causes:
+            possible_root_causes.append("The available report does not identify a root cause yet; collect service and dependency health evidence.")
+
+        if "database" in combined or "connection pool" in combined or "postgres" in combined or "mysql" in combined:
+            runbook = "CHECK_DATABASE_CONNECTIONS"
+        elif "deploy" in combined or "release" in combined:
+            runbook = "CHECK_DEPLOYMENT_HEALTH"
+        elif "503" in combined or "5xx" in combined:
+            runbook = "CHECK_SERVICE_HEALTH"
+        else:
+            runbook = "GENERAL_INCIDENT_TRIAGE"
         return {
-            "summary": f"{service} incident reported with symptoms including: {symptoms}",
-            "possible_root_causes": [
-                "Resource saturation or dependency exhaustion",
-                "Deployment-related regression",
-                "Configuration drift or unhealthy dependency",
-            ],
-            "confidence": 0.72,
-            "recommended_runbook": "CHECK_RESOURCE_HEALTH",
-            "recommendation": "Check dependency health, saturation metrics, and recent deployment impacts before applying a production change.",
+            "summary": f"The report for {service} describes: {symptoms}. No cause is confirmed by the available data.",
+            "possible_root_causes": possible_root_causes,
+            "confidence": 0.45,
+            "recommended_runbook": runbook,
+            "recommendation": "Treat listed causes as hypotheses. Verify against telemetry and historical incidents before taking action.",
         }
 
     async def analyze_incident(self, incident_data: dict[str, Any]) -> dict[str, Any]:
@@ -36,7 +52,7 @@ class LLMService:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a senior SRE investigating production incidents. Respond with concise JSON: summary, possible_root_causes (list), confidence (0-1), recommended_runbook, recommendation.",
+                    "content": "You are Sentinel, an incident response assistant. Use only the supplied incident facts. Never present a possible root cause as confirmed, never invent historical incidents, resolutions, evidence, or runbooks, and say when information is unavailable. Respond with concise JSON: summary, possible_root_causes (list of hypotheses), confidence (0-1), recommended_runbook, recommendation.",
                 },
                 {
                     "role": "user",

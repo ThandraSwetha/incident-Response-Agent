@@ -5,9 +5,9 @@ from app.services.llm_service import LLMService
 
 
 class InvestigationService:
-    def __init__(self):
+    def __init__(self, db=None):
         self.llm_service = LLMService()
-        self.hindsight_service = HindsightService()
+        self.hindsight_service = HindsightService(db)
 
     async def investigate(self, incident_data: dict) -> dict:
         analysis = await self.llm_service.analyze_incident(incident_data)
@@ -20,7 +20,7 @@ class InvestigationService:
             "historical_matches": similar,
             "hindsight_memory": similar,
             "evidence": [
-                {"source": "Hindsight memory", "detail": "Matched previous incidents by service and symptoms."},
+                {"source": "Operations Memory", "detail": f"Matched {len(similar)} previous incidents by service and symptoms." if similar else "No similar incident was found in Operations Memory."},
                 {"source": "LLM analysis", "detail": analysis.get("recommendation", "Environment check is recommended.")},
             ],
             "recommended_actions": [
